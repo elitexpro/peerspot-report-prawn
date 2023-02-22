@@ -1,53 +1,72 @@
 class PdfViewController < ApplicationController
   def index
-    pdf = Prawn::Document.new(
-      page_size: 'B5',
-      page_layout: :portrait,
-      margin: 44
-    )
-
-    create_header(pdf, 'Valuable Features')
-
-    create_line(pdf, 'When it comes to valuable features, the main features mentioned include:')
-
-    create_list(pdf, 'Its breadth of capabilities')
-    create_list(pdf, 'The ease of use')
-    create_list(pdf, 'It follows ArchiMate principle')
-    create_list(pdf, 'Its ability to scale and grow')
-    create_list(pdf, 'The HoriZZon portal')
-    create_list(pdf, 'Visualizations')
-    create_list(pdf, 'Insights')
-
-    create_line(pdf, 'What users had to say about valuable features:')
-
-    param = {
+    # Forked Data of Features
+    features = [{
+      key: 'Its breadth of capabilities',
       avatar: 'user-avatar-1.png',
       name: 'Olga Lucia Salgado',
-      subtitle: 'Senior Enterprice Architect',
-      feature: 'at a manufacturing company with 201-500 employees',
+      title: 'Senior Enterprice Architect',
+      company_description: 'at a manufacturing company with 201-500 employees',
       recommendation: '“Its breadth of capabilities is very good from the modeling perspective, as it really covers all of the standards that we use in our company and even some that we haven\'t really used yet.”'
-    }
-    json_object = JSON.generate(param)
-
-    create_feature(pdf, json_object)
-
-    pdf.span(100, position: :center) do
-      pdf.text(' - ' * 9)
-    end
-
-    param = {
+    }, {
+      key: 'The ease of use',
       avatar: 'user-avatar-2.png',
       name: 'Bijoy Talukder',
-      subtitle: 'Senior Enterprise Architect',
-      feature: 'at a manufacturing company with 201-500 emmployees',
+      title: 'Senior Enterprise Architect',
+      company_description: 'at a manufacturing company with 201-500 emmployees',
       recommendation: '“Once things are put in BiZZdesign, it is very easy to use.”'
-    }
-    json_object = JSON.generate(param)
+    }, {
+      key: 'It follows ArchiMate principle'
+    }, {
+      key: 'Its ability to scale and grow'
+    }, {
+      key: 'The HoriZZon portal'
+    }, {
+      key: 'Visualizations'
+    }, {
+      key: 'Insights'
+    }]
 
-    create_feature(pdf, json_object)
+    # Create Prawn Document
+    pdf = Prawn::Document.new(
+      page_size: 'A4',
+      page_layout: :portrait,
+      margin: 46
+    )
 
+    # Header of Report
+    create_header(pdf, 'Valuable Features')
+
+    # When it comes to valuable features, the main features mentioned include:
+    pdf.move_down 16
+    create_line(pdf, 'When it comes to valuable features, the main features mentioned include:')
+    pdf.move_down 11
+
+    features.each do |feature|
+      create_check_list_item(pdf, feature[:key])
+    end
+
+    # What users had to say about valuable features:
+    pdf.move_down 16
+    create_line(pdf, 'What users had to say about valuable features:')
+    pdf.move_down 16
+
+    # Display only two features on the current page (this is a temparary setting according to the screenshot)
+    ref = File.join(Rails.root, "app/assets/images", "feature-separator.png")
+    (feature_count_to_display = 2).times do |i|
+      create_feature(pdf, features[i])
+
+      # Draw separator between features
+      feature_count_to_display - 1 > i && pdf.span(300, position: :center) do
+        pdf.image(ref)
+        pdf.move_down 30
+      end
+    end
+
+    # Footer of Report
     create_footer(pdf)
 
+    # Generate and render the report file as PDF
     filename = Time.now.to_i.to_s
 
     file = File.join(Rails.root, "app/report", filename + '.pdf')
@@ -58,56 +77,83 @@ class PdfViewController < ApplicationController
 
   private
   def create_header(pdf, text)
-    pdf.font('Helvetica', style: :bold, size: 24)
+    pdf.bounding_box([-46, pdf.cursor + 25], :width => 0, :height => 50) do
+      pdf.stroke_color 'FFFFFF'
+      pdf.stroke do
+          pdf.fill_color 'FFD700'
+          pdf.fill_and_stroke_rectangle [0, pdf.cursor], 10, 50
+          pdf.fill_color '000000'
+      end
+    end
+
+    pdf.move_up 44
+    pdf.rectangle [300,300], 100, 200
+    pdf.font(Rails.root.join("app/assets/fonts/Martel-Black.ttf").to_s, size: 24)
     pdf.text text
-    pdf.font('Helvetica', style: :normal, size: 12)
     pdf.move_down 20
   end
 
   def create_line(pdf, text)
-    pdf.move_down 8
+    pdf.font(Rails.root.join("app/assets/fonts/Lato-Medium.ttf").to_s, style: :normal, size: 12)
     pdf.text(text)
-    pdf.move_down 8
   end
 
-  def create_list(pdf, text)
-    pdf.move_down 4
+  def create_check_list_item(pdf, text)
+    pdf.move_down 5
+
+    # Draw icon-check
     ref = File.join(Rails.root, "app/assets/images", "green-check.png")
     pdf.image(ref)
-    y_position = pdf.cursor + 4
-    pdf.draw_text(text, at: [24, y_position])
-    pdf.move_down 4
+
+    # Draw list content
+    y_position = pdf.cursor + 5
+    pdf.draw_text(text, at: [40, y_position])
   end
 
-  def create_feature(pdf, param)
-    pdf.move_down 12
+  def create_feature(pdf, data)
+    pdf.move_down 10
 
-    params = JSON.parse(param)
-    ref = File.join(Rails.root, "app/assets/images", params['avatar'])
+    ref = File.join(Rails.root, "app/assets/images", data[:avatar])
     pdf.image(ref)
 
     y_position = pdf.cursor + 34
 
-    pdf.font('Helvetica', style: :bold) do
-      pdf.draw_text(params['name'], at: [60, y_position])
+    pdf.font(Rails.root.join("app/assets/fonts/Lato-Medium.ttf").to_s, style: :bold) do
+      pdf.draw_text(data[:name], at: [60, y_position], size: 16)
     end
 
-    pdf.font('Helvetica') do
-      pdf.draw_text(params['subtitle'], at: [60, y_position - 16], width: 300, height: 12, color: 'b4b4b4')
-      pdf.draw_text(params['feature'], at: [60, y_position - 28], width: 300, height: 12, color: 'b4b4b4')
+    pdf.font(Rails.root.join("app/assets/fonts/Lato-Regular.ttf").to_s) do
+      pdf.fill_color "a9a9a9"
+      pdf.draw_text(data[:title], at: [60, y_position - 24], width: 300, height: 12, size: 12)
+      pdf.draw_text(data[:company_description], at: [60, y_position - 36], width: 300, height: 12, size: 12)
     end
 
-    y_position = pdf.cursor - 24
+    pdf.fill_color "000000"
+    pdf.move_down 20
 
-    pdf.font('Helvetica') do
-      pdf.text_box(params['recommendation'], at: [60, y_position], width: 300)
+    pdf.font(Rails.root.join("app/assets/fonts/Martel-Regular.ttf").to_s) do
+      pdf.text_box(data[:recommendation], at: [60, pdf.cursor], width: 450, size: 14)
     end
 
-    pdf.move_down 85
+    pdf.move_down 100
   end
 
   def create_footer(pdf)
-    pdf.draw_text('©2023 PeerSpot', at: [0, -24])
-    pdf.draw_text('3', at: [400, -24])
+    # Copyright
+    pdf.draw_text('©2023', at: [0, -24])
+
+    # Draw Company Bookmark
+    pdf.bounding_box([45, -9], :width => 10, :height => 16) do
+      ref = File.join(Rails.root, "app/assets/images", "footer-icon.png")
+      pdf.image(ref)
+    end
+
+    pdf.bounding_box([60, -17], :width => 40, :height => 100) do
+      ref = File.join(Rails.root, "app/assets/images", "PeerSpot.png")
+      pdf.image(ref)
+    end
+
+    # Page number
+    pdf.draw_text('3', at: [520, -24])
   end
 end
